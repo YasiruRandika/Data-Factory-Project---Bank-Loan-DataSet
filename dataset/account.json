@@ -1,0 +1,35 @@
+{
+	"name": "account",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SourceDB",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "account_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "district_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "frequency",
+				"type": "varchar"
+			},
+			{
+				"name": "date",
+				"type": "date"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "account"
+		}
+	}
+}

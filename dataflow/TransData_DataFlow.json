@@ -1,0 +1,55 @@
+{
+	"name": "TransData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "transcsv",
+						"type": "DatasetReference"
+					},
+					"name": "Trans"
+				},
+				{
+					"dataset": {
+						"referenceName": "dimDate",
+						"type": "DatasetReference"
+					},
+					"name": "DateData"
+				},
+				{
+					"dataset": {
+						"referenceName": "AccountDW",
+						"type": "DatasetReference"
+					},
+					"name": "AccountData"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "TransDW",
+						"type": "DatasetReference"
+					},
+					"name": "TransDW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DateSKLookup"
+				},
+				{
+					"name": "DerivedColums"
+				},
+				{
+					"name": "AccountSKLookUp"
+				},
+				{
+					"name": "DerivedColumn1"
+				}
+			],
+			"script": "source(output(\n\t\ttrans_id as integer,\n\t\taccount_id as integer,\n\t\tdate as string,\n\t\ttype as string,\n\t\toperation as string,\n\t\tamount as short,\n\t\tbalance as short,\n\t\tk_symbol as string,\n\t\tbank as string,\n\t\taccount as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.trans.csv']) ~> Trans\nsource(output(\n\t\tDateSK as integer,\n\t\tDate as timestamp,\n\t\tDay as integer,\n\t\tMonthName as string,\n\t\tMonthNumber as integer,\n\t\tCalendarMonthLabel as string,\n\t\tYear as integer,\n\t\tISOWeekNumber as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DateData\nsource(output(\n\t\taccount_sk as integer,\n\t\talternate_account_id as integer,\n\t\tdistrict_key as integer,\n\t\tfrequency as string,\n\t\tdatekey as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> AccountData\nDerivedColums, DerivedColumn1 lookup(dateString == derivedDate,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> DateSKLookup\nTrans derive(insertDate = currentTimestamp(),\n\t\tupdateDate = currentTimestamp(),\n\t\tdateString = toString(toDate(toString(date)))) ~> DerivedColums\nDateSKLookup, AccountData lookup(account_id == alternate_account_id,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> AccountSKLookUp\nDateData derive(derivedDate = toString(toDate(toString(toTimestamp(toString(Date, \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSS\"), \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSS\"))))) ~> DerivedColumn1\nAccountSKLookUp sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\ttrans_sk as integer,\n\t\taccountkey as integer,\n\t\tdatekey as integer,\n\t\ttype as string,\n\t\toperation as string,\n\t\tamount as double,\n\t\tbalance as double,\n\t\tk_symbol as string,\n\t\tbank as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\taccountkey = account_sk,\n\t\tdatekey = DateSK,\n\t\ttype,\n\t\toperation,\n\t\tamount,\n\t\tbalance,\n\t\tk_symbol,\n\t\tbank,\n\t\tinsert_date = insertDate,\n\t\tmodified_date = updateDate\n\t)) ~> TransDW"
+		}
+	}
+}

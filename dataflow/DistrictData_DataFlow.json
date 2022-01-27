@@ -1,0 +1,32 @@
+{
+	"name": "DistrictData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "districtsv",
+						"type": "DatasetReference"
+					},
+					"name": "DistrictData"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DimDistrict",
+						"type": "DatasetReference"
+					},
+					"name": "DW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DerivedColumns"
+				}
+			],
+			"script": "source(output(\n\t\tA1 as integer,\n\t\tA2 as string,\n\t\tA3 as string,\n\t\tA4 as integer,\n\t\tA5 as integer,\n\t\tA6 as integer,\n\t\tA7 as integer,\n\t\tA8 as integer,\n\t\tA9 as integer,\n\t\tA10 as decimal(10,0),\n\t\tA11 as integer,\n\t\tA12 as string,\n\t\tA13 as decimal(10,0),\n\t\tA14 as integer,\n\t\tA15 as string,\n\t\tA16 as integer\n\t),\n\tallowSchemaDrift: false,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.district.csv'],\n\tpartitionBy('hash', 1)) ~> DistrictData\nDistrictData derive(insert_date = currentTimestamp(),\n\t\tmodified_date = currentTimestamp(),\n\t\talternate_district_id = A1,\n\tpartitionBy('hash', 1)) ~> DerivedColumns\nDerivedColumns sink(allowSchemaDrift: false,\n\tvalidateSchema: false,\n\tinput(\n\t\tdistrict_sk as integer,\n\t\talternate_district_id as integer,\n\t\tA2 as string,\n\t\tA3 as string,\n\t\tA4 as integer,\n\t\tA5 as integer,\n\t\tA6 as integer,\n\t\tA7 as integer,\n\t\tA8 as integer,\n\t\tA9 as integer,\n\t\tA10 as decimal(5,1),\n\t\tA11 as integer,\n\t\tA12 as string,\n\t\tA13 as decimal(4,2),\n\t\tA14 as integer,\n\t\tA15 as string,\n\t\tA16 as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DW"
+		}
+	}
+}

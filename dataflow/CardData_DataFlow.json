@@ -1,0 +1,42 @@
+{
+	"name": "CardData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "cardcsv",
+						"type": "DatasetReference"
+					},
+					"name": "Card"
+				},
+				{
+					"dataset": {
+						"referenceName": "DispDW",
+						"type": "DatasetReference"
+					},
+					"name": "DispData"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "CardDW",
+						"type": "DatasetReference"
+					},
+					"name": "CardDW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DispSKLookup"
+				},
+				{
+					"name": "DerivedColums"
+				}
+			],
+			"script": "source(output(\n\t\tcard_id as integer,\n\t\tdisp_id as integer,\n\t\ttype as string,\n\t\tissued as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.card.csv']) ~> Card\nsource(output(\n\t\tdisp_sk as integer,\n\t\talternate_disp_id as integer,\n\t\tclient_key as integer,\n\t\taccount_key as integer,\n\t\ttype as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DispData\nDerivedColums, DispData lookup(disp_id == alternate_disp_id,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> DispSKLookup\nCard derive(insertDate = currentTimestamp(),\n\t\tupdateDate = currentTimestamp()) ~> DerivedColums\nDispSKLookup sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tcard_sk as integer,\n\t\talternate_card_id as integer,\n\t\tdisp_key as integer,\n\t\ttype as string,\n\t\tissued as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\talternate_card_id = card_id,\n\t\tdisp_key = disp_sk,\n\t\ttype = Card@type,\n\t\tissued,\n\t\tinsert_date = insertDate,\n\t\tmodified_date\n\t)) ~> CardDW"
+		}
+	}
+}

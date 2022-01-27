@@ -1,0 +1,17 @@
+{
+	"name": "Trigger_wse",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Hour",
+				"interval": 24,
+				"startTime": "2022-01-23T05:22:00Z",
+				"timeZone": "UTC"
+			}
+		}
+	}
+}

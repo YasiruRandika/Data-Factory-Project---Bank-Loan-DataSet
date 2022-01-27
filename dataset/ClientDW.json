@@ -1,0 +1,45 @@
+{
+	"name": "ClientDW",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Synapse",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [
+			{
+				"name": "client_sk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "alternate_client_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "birth_number",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "district_key",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "insert_date",
+				"type": "date"
+			},
+			{
+				"name": "modified_date",
+				"type": "date"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "DimClient"
+		}
+	}
+}

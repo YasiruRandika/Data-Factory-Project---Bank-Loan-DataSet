@@ -1,0 +1,95 @@
+{
+	"name": "district",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SourceDB",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "A1",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A2",
+				"type": "varchar"
+			},
+			{
+				"name": "A3",
+				"type": "varchar"
+			},
+			{
+				"name": "A4",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A5",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A6",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A7",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A8",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A9",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A10",
+				"type": "decimal",
+				"precision": 5,
+				"scale": 1
+			},
+			{
+				"name": "A11",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A12",
+				"type": "varchar"
+			},
+			{
+				"name": "A13",
+				"type": "decimal",
+				"precision": 4,
+				"scale": 2
+			},
+			{
+				"name": "A14",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "A15",
+				"type": "varchar"
+			},
+			{
+				"name": "A16",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "district"
+		}
+	}
+}

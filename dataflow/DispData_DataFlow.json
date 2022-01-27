@@ -1,0 +1,52 @@
+{
+	"name": "DispData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dispcsv",
+						"type": "DatasetReference"
+					},
+					"name": "Disp"
+				},
+				{
+					"dataset": {
+						"referenceName": "ClientDW",
+						"type": "DatasetReference"
+					},
+					"name": "ClientData"
+				},
+				{
+					"dataset": {
+						"referenceName": "AccountDW",
+						"type": "DatasetReference"
+					},
+					"name": "AccountData"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DispDW",
+						"type": "DatasetReference"
+					},
+					"name": "DispDW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "ClientSKLookup"
+				},
+				{
+					"name": "DerivedColums"
+				},
+				{
+					"name": "AccountSKLookUp"
+				}
+			],
+			"script": "source(output(\n\t\tdisp_id as integer,\n\t\tclient_id as integer,\n\t\taccount_id as integer,\n\t\ttype as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.disp.csv']) ~> Disp\nsource(output(\n\t\tclient_sk as integer,\n\t\talternate_client_id as integer,\n\t\tbirth_number as integer,\n\t\tdistrict_key as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> ClientData\nsource(output(\n\t\taccount_sk as integer,\n\t\talternate_account_id as integer,\n\t\tdistrict_key as integer,\n\t\tfrequency as string,\n\t\tdatekey as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> AccountData\nDerivedColums, ClientData lookup(client_id == alternate_client_id,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> ClientSKLookup\nDisp derive(insertDate = currentTimestamp(),\n\t\tupdateDate = currentTimestamp()) ~> DerivedColums\nClientSKLookup, AccountData lookup(account_id == alternate_account_id,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> AccountSKLookUp\nAccountSKLookUp sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tdisp_sk as integer,\n\t\talternate_disp_id as integer,\n\t\tclient_key as integer,\n\t\taccount_key as integer,\n\t\ttype as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\talternate_disp_id = disp_id,\n\t\tclient_key = client_sk,\n\t\taccount_key = account_sk,\n\t\ttype,\n\t\tinsert_date = insertDate,\n\t\tmodified_date = updateDate\n\t)) ~> DispDW"
+		}
+	}
+}

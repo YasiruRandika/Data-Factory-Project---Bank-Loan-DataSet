@@ -1,0 +1,55 @@
+{
+	"name": "AccountData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "accountcsv",
+						"type": "DatasetReference"
+					},
+					"name": "AccountData"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimDistrict",
+						"type": "DatasetReference"
+					},
+					"name": "DistrictData"
+				},
+				{
+					"dataset": {
+						"referenceName": "dimDate",
+						"type": "DatasetReference"
+					},
+					"name": "DimDate"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "AccountDW",
+						"type": "DatasetReference"
+					},
+					"name": "AcccountDW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DerivedColumn1"
+				},
+				{
+					"name": "DateSKLookUp"
+				},
+				{
+					"name": "DerivedColumn2"
+				},
+				{
+					"name": "Lookup1"
+				}
+			],
+			"script": "source(output(\n\t\taccount_id as integer,\n\t\tdistrict_id as integer,\n\t\tfrequency as string,\n\t\tdate as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.account.csv']) ~> AccountData\nsource(output(\n\t\tdistrict_sk as integer,\n\t\talternate_district_id as integer,\n\t\tA2 as string,\n\t\tA3 as string,\n\t\tA4 as integer,\n\t\tA5 as integer,\n\t\tA6 as integer,\n\t\tA7 as integer,\n\t\tA8 as integer,\n\t\tA9 as integer,\n\t\tA10 as decimal(5,1),\n\t\tA11 as integer,\n\t\tA12 as string,\n\t\tA13 as decimal(4,2),\n\t\tA14 as integer,\n\t\tA15 as string,\n\t\tA16 as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DistrictData\nsource(output(\n\t\tDateSK as integer,\n\t\tDate as timestamp,\n\t\tDay as integer,\n\t\tMonthName as string,\n\t\tMonthNumber as integer,\n\t\tCalendarMonthLabel as string,\n\t\tYear as integer,\n\t\tISOWeekNumber as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DimDate\nAccountData derive(insertDate = currentTimestamp(),\n\t\tmodifiedDate = currentTimestamp(),\n\t\tdateString = toString(date)) ~> DerivedColumn1\nDerivedColumn1, DerivedColumn2 lookup(dateString == DerivedDate,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> DateSKLookUp\nDimDate derive(DerivedDate = toString(toDate(toString(toTimestamp(toString(Date, \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSS\"), \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSS\"))))) ~> DerivedColumn2\nDateSKLookUp, DistrictData lookup(district_id == alternate_district_id,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> Lookup1\nLookup1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\taccount_sk as integer,\n\t\talternate_account_id as integer,\n\t\tdistrict_key as integer,\n\t\tfrequency as string,\n\t\tdatekey as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\talternate_account_id = account_id,\n\t\tdistrict_key = district_sk,\n\t\tfrequency,\n\t\tdatekey = DateSK,\n\t\tinsert_date,\n\t\tmodified_date\n\t)) ~> AcccountDW"
+		}
+	}
+}

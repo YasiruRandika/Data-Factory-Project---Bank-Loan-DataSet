@@ -1,0 +1,91 @@
+{
+	"name": "LoanData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "loancsv",
+						"type": "DatasetReference"
+					},
+					"name": "LoanData"
+				},
+				{
+					"dataset": {
+						"referenceName": "AccountDW",
+						"type": "DatasetReference"
+					},
+					"name": "AccountDW"
+				},
+				{
+					"dataset": {
+						"referenceName": "dimDate",
+						"type": "DatasetReference"
+					},
+					"name": "DimDate"
+				},
+				{
+					"dataset": {
+						"referenceName": "LoanDW",
+						"type": "DatasetReference"
+					},
+					"name": "DimLoan"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "LoanDW",
+						"type": "DatasetReference"
+					},
+					"name": "UpdateExistingValue"
+				},
+				{
+					"dataset": {
+						"referenceName": "LoanDW",
+						"type": "DatasetReference"
+					},
+					"name": "InsertLatestRecord"
+				},
+				{
+					"dataset": {
+						"referenceName": "LoanDW",
+						"type": "DatasetReference"
+					},
+					"name": "NewRecordsAdding"
+				}
+			],
+			"transformations": [
+				{
+					"name": "LookupforAccountKey"
+				},
+				{
+					"name": "DerivedColumns"
+				},
+				{
+					"name": "DimDateDerivedString"
+				},
+				{
+					"name": "LookupforDateKey"
+				},
+				{
+					"name": "NotAvailableInDW"
+				},
+				{
+					"name": "AvailableInDW"
+				},
+				{
+					"name": "AlterRowForUpdate"
+				},
+				{
+					"name": "LatestRecordDimLoan"
+				},
+				{
+					"name": "DerivedColumnForUpdateRecords"
+				}
+			],
+			"script": "source(output(\n\t\tloan_id as integer,\n\t\taccount_id as integer,\n\t\tdate as string,\n\t\tamount as integer,\n\t\tduration as integer,\n\t\tpayments as decimal(10,0),\n\t\tstatus as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.loan.csv']) ~> LoanData\nsource(output(\n\t\taccount_sk as integer,\n\t\talternate_account_id as integer,\n\t\tdistrict_key as integer,\n\t\tfrequency as string,\n\t\tdatekey as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> AccountDW\nsource(output(\n\t\tDateSK as integer,\n\t\tDate as timestamp,\n\t\tDay as integer,\n\t\tMonthName as string,\n\t\tMonthNumber as integer,\n\t\tCalendarMonthLabel as string,\n\t\tYear as integer,\n\t\tISOWeekNumber as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DimDate\nsource(output(\n\t\tloan_sk as integer,\n\t\talternate_loan_id as integer,\n\t\taccount_key as integer,\n\t\tdate_key as integer,\n\t\tamount as integer,\n\t\tduration as integer,\n\t\tpayments as decimal(7,2),\n\t\tstatus as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date,\n\t\tstart_date as date,\n\t\tend_date as date,\n\t\tcurrent_flag as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DimLoan\nDerivedColumns, AccountDW lookup(account_id == alternate_account_id,\n\tmultiple: false,\n\tpickup: 'first',\n\tasc(alternate_account_id, true),\n\tbroadcast: 'auto')~> LookupforAccountKey\nLoanData derive(insertDate = currentTimestamp(),\n\t\tupdateDate = currentTimestamp(),\n\t\tdateString = toString(toDate(toString(date))),\n\t\tcurrentFlag = 1) ~> DerivedColumns\nDimDate derive(DerivedDate = toString(toDate(toString(toTimestamp(toString(Date, \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSS\"), \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSS\"))))) ~> DimDateDerivedString\nLookupforAccountKey, DimDateDerivedString lookup(dateString == DerivedDate,\n\tmultiple: false,\n\tpickup: 'first',\n\tasc(Year, true),\n\tbroadcast: 'auto')~> LookupforDateKey\nLookupforDateKey, DimLoan exists(loan_id == alternate_loan_id,\n\tnegate:true,\n\tbroadcast: 'left')~> NotAvailableInDW\nLookupforDateKey, LatestRecordDimLoan exists(loan_id == alternate_loan_id,\n\tnegate:false,\n\tbroadcast: 'auto')~> AvailableInDW\nDerivedColumnForUpdateRecords alterRow(updateIf(true())) ~> AlterRowForUpdate\nDimLoan filter(current_flag==1) ~> LatestRecordDimLoan\nAvailableInDW derive(currentFlag = 0) ~> DerivedColumnForUpdateRecords\nAlterRowForUpdate sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tloan_sk as integer,\n\t\talternate_loan_id as integer,\n\t\taccount_key as integer,\n\t\tdate_key as integer,\n\t\tamount as integer,\n\t\tduration as integer,\n\t\tpayments as decimal(7,2),\n\t\tstatus as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date,\n\t\tstart_date as date,\n\t\tend_date as date,\n\t\tcurrent_flag as integer\n\t),\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['alternate_loan_id'],\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\talternate_loan_id = loan_id,\n\t\tend_date = updateDate,\n\t\tcurrent_flag = currentFlag\n\t)) ~> UpdateExistingValue\nAvailableInDW sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tloan_sk as integer,\n\t\talternate_loan_id as integer,\n\t\taccount_key as integer,\n\t\tdate_key as integer,\n\t\tamount as integer,\n\t\tduration as integer,\n\t\tpayments as decimal(7,2),\n\t\tstatus as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date,\n\t\tstart_date as date,\n\t\tend_date as date,\n\t\tcurrent_flag as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> InsertLatestRecord\nNotAvailableInDW sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tloan_sk as integer,\n\t\talternate_loan_id as integer,\n\t\taccount_key as integer,\n\t\tdate_key as integer,\n\t\tamount as integer,\n\t\tduration as integer,\n\t\tpayments as decimal(7,2),\n\t\tstatus as string,\n\t\tinsert_date as date,\n\t\tmodified_date as date,\n\t\tstart_date as date,\n\t\tend_date as date,\n\t\tcurrent_flag as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\talternate_loan_id = loan_id,\n\t\taccount_key = account_sk,\n\t\tdate_key = datekey,\n\t\tamount,\n\t\tduration,\n\t\tpayments,\n\t\tstatus,\n\t\tinsert_date = insertDate,\n\t\tmodified_date = updateDate,\n\t\tstart_date = insertDate,\n\t\tcurrent_flag = currentFlag\n\t)) ~> NewRecordsAdding"
+		}
+	}
+}

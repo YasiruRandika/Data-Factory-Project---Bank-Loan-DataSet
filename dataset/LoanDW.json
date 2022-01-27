@@ -1,0 +1,78 @@
+{
+	"name": "LoanDW",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Synapse",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [
+			{
+				"name": "loan_sk",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "alternate_loan_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "account_key",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "date_key",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "amount",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "duration",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "payments",
+				"type": "decimal",
+				"precision": 7,
+				"scale": 2
+			},
+			{
+				"name": "status",
+				"type": "varchar"
+			},
+			{
+				"name": "insert_date",
+				"type": "date"
+			},
+			{
+				"name": "modified_date",
+				"type": "date"
+			},
+			{
+				"name": "start_date",
+				"type": "date"
+			},
+			{
+				"name": "end_date",
+				"type": "date"
+			},
+			{
+				"name": "current_flag",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "DimLoan"
+		}
+	}
+}

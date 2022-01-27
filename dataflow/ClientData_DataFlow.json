@@ -1,0 +1,45 @@
+{
+	"name": "ClientData_DataFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "clientcsv",
+						"type": "DatasetReference"
+					},
+					"name": "Client"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimDistrict",
+						"type": "DatasetReference"
+					},
+					"name": "DistrictData"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ClientDW",
+						"type": "DatasetReference"
+					},
+					"name": "ClientDW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "Lookup1"
+				},
+				{
+					"name": "DerivedColums"
+				},
+				{
+					"name": "AlterRow1"
+				}
+			],
+			"script": "source(output(\n\t\tclient_id as integer,\n\t\tbirth_number as integer,\n\t\tdistrict_id as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:['dbo.client.csv']) ~> Client\nsource(output(\n\t\tdistrict_sk as integer,\n\t\talternate_district_id as integer,\n\t\tA2 as string,\n\t\tA3 as string,\n\t\tA4 as integer,\n\t\tA5 as integer,\n\t\tA6 as integer,\n\t\tA7 as integer,\n\t\tA8 as integer,\n\t\tA9 as integer,\n\t\tA10 as decimal(5,1),\n\t\tA11 as integer,\n\t\tA12 as string,\n\t\tA13 as decimal(4,2),\n\t\tA14 as integer,\n\t\tA15 as string,\n\t\tA16 as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table',\n\tstaged: true) ~> DistrictData\nDerivedColums, DistrictData lookup(district_id == alternate_district_id,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> Lookup1\nClient derive(insertDate = currentTimestamp(),\n\t\tupdateDate = currentTimestamp()) ~> DerivedColums\nLookup1 alterRow(upsertIf(true())) ~> AlterRow1\nAlterRow1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tclient_sk as integer,\n\t\talternate_client_id as integer,\n\t\tbirth_number as integer,\n\t\tdistrict_key as integer,\n\t\tinsert_date as date,\n\t\tmodified_date as date\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['alternate_client_id'],\n\tformat: 'table',\n\tstaged: true,\n\tallowCopyCommand: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\talternate_client_id = client_id,\n\t\tbirth_number,\n\t\tdistrict_key = district_sk,\n\t\tinsert_date = insertDate,\n\t\tmodified_date = updateDate\n\t)) ~> ClientDW"
+		}
+	}
+}
